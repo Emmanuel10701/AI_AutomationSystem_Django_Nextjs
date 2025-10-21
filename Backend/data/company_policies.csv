@@ -1,0 +1,10 @@
+category,title,details,effective_date,applicable_to
+baggage,Carry-on Policy,Each passenger is allowed one carry-on bag and one personal item. The carry-on must not exceed 22 x 14 x 9 inches.,2024-01-01,All passengers
+baggage,Checked Baggage,First checked bag: $30, second checked bag: $40. Weight limit: 50 lbs per bag.,2024-01-01,Economy passengers
+cancellation,24-hour Cancellation,Free cancellation within 24 hours of booking for all fare types.,2024-01-01,All passengers
+cancellation,Standard Cancellation,Basic Economy: Non-refundable. Main Cabin: $100 fee. First Class: $50 fee.,2024-01-01,All passengers
+checkin,Online Check-in,Online check-in available 24 hours to 1 hour before departure. Mobile boarding pass supported.,2024-01-01,All passengers
+checkin,Airport Check-in,Check-in counters open 3 hours before departure and close 45 minutes before departure.,2024-01-01,All passengers
+seating,Seat Selection,Basic Economy: Seats assigned at check-in. Other fares: Free seat selection.,2024-01-01,All passengers
+special,Unaccompanied Minors,Service required for children 5-14 years old. Fee: $150 each way.,2024-01-01,Minors
+special,Pets in Cabin,Small dogs and cats allowed in cabin. Fee: $125 per carrier. Advance notice required.,2024-01-01,Pet owners

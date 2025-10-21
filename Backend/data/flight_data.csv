@@ -1,0 +1,6 @@
+airline,departure_city,arrival_city,aircraft_type,amenities,baggage_policy,check_in
+Delta Air Lines,New York,Los Angeles,Boeing 737,WiFi, Power Outlets,Entertainment,1 carry-on + 1 personal item, 1st checked bag $30,Online check-in 24 hours before
+American Airlines,Chicago,Miami,Airbus A320,WiFi, Snacks,Entertainment,1 carry-on + 1 personal item, 1st checked bag $30,Mobile boarding pass available
+United Airlines,San Francisco,Denver,Boeing 757,WiFi, Meals,Power Outlets,1 carry-on + 1 personal item, 2 free checked bags,Online or airport check-in
+Southwest Airlines,Dallas,Las Vegas,Boeing 737,Complimentary Snacks,Open Seating,2 free checked bags + carry-on,No seat assignment,Open seating policy
+JetBlue,Boston,Orlando,Airbus A321,Free WiFi, Live TV,Snacks,1 carry-on + 1 personal item, 1st checked bag free,Blue app check-in
