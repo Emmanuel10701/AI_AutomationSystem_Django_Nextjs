@@ -1,11 +1,3 @@
-
----
-
-### 📄 **3️⃣ LICENSE.md**
-
-Create a file named `LICENSE.md` in the root directory:
-
-```markdown
 # MIT License
 
 Copyright (c) 2025 Emmanuel
