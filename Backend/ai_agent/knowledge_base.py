@@ -5,7 +5,7 @@ from llama_index.vector_stores import ChromaVectorStore
 from llama_index.storage.storage_context import StorageContext
 from llama_index.embeddings import HuggingFaceEmbedding
 from langchain_community.llms import GooglePalm
-from langchain_community.chat_models import ChatGoogleGenerativeAI
+from langchain_google_genai import ChatGoogleGenerativeAI
 from django.conf import settings
 import chromadb
 

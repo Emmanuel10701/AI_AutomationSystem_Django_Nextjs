@@ -181,7 +181,7 @@ PAYPAL_CLIENT_SECRET = config('PAYPAL_CLIENT_SECRET', default='')
 
 # AI Configuration
 GOOGLE_API_KEY = config('GOOGLE_API_KEY', default='')
-GEMINI_MODEL = config('GEMINI_MODEL', default='gemini-pro')
+GEMINI_MODEL = config('GEMINI_MODEL', default='gemini-2.0-flash-exp')
 
 # File paths for knowledge base
 DATA_DIR = BASE_DIR / 'data'
