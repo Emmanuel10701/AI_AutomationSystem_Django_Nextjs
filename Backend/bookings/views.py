@@ -1,9 +1,7 @@
 from django.shortcuts import render
-
-# Create your views here.
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, permission_classes
 import random
 import string
 from .models import Booking
@@ -35,10 +33,24 @@ def create_booking(request):
     )
     
     if serializer.is_valid():
-        booking = serializer.save()
-        booking.booking_reference = generate_booking_reference()
-        booking.save()
-        
-        return Response(BookingSerializer(booking).data, status=status.HTTP_201_CREATED)
+        try:
+            # Create the booking using serializer
+            booking = serializer.save()
+            
+            # Generate and set booking reference
+            booking.booking_reference = generate_booking_reference()
+            booking.save()
+            
+            # Return the created booking data
+            return Response(
+                BookingSerializer(booking).data, 
+                status=status.HTTP_201_CREATED
+            )
+            
+        except Exception as e:
+            return Response(
+                {'error': f'Failed to create booking: {str(e)}'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
     
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

@@ -1,0 +1,68 @@
+# Core Django
+Django==4.2.7
+djangorestframework==3.14.0
+django-cors-headers==4.3.1
+django-rest-knox==4.2.0
+
+# Database
+psycopg2-binary==2.9.7
+dj-database-url==1.3.0
+
+# AI & Machine Learning (without numpy dependencies)
+langchain==0.0.346
+llama-index==0.9.15
+google-generativeai==0.3.0
+openai==1.3.0
+tiktoken==0.5.2
+chromadb==0.4.15
+
+# Payment
+paypalrestsdk==1.13.1
+
+# Utilities
+python-dotenv==1.0.0
+python-decouple==3.8
+celery==5.3.4
+redis==5.0.1
+python-multipart==0.0.6
+
+# Production
+gunicorn==21.2.0
+whitenoise==6.5.0
+
+# Dependencies
+asgiref==3.7.2
+sqlparse==0.4.4
+pytz==2023.3.post1
+typing-extensions==4.8.0
+urllib3==1.26.18
+certifi==2023.11.17
+charset-normalizer==3.3.2
+idna==3.4
+requests==2.31.0
+click==8.1.7
+click-didyoumean==0.3.0
+click-plugins==1.1.1
+click-repl==0.3.0
+prompt-toolkit==3.0.43
+wcwidth==0.2.13
+huggingface-hub==0.19.4
+filelock==3.13.1
+packaging==23.2
+tokenizers==0.15.1
+safetensors==0.4.1
+pyyaml==6.0.1
+regex==2023.12.25
+fsspec==2023.10.0
+Jinja2==3.1.2
+MarkupSafe==2.1.3
+networkx==3.2.1
+threadpoolctl==3.2.0
+tqdm==4.66.1
+colorama==0.4.6
+protobuf==4.25.1
+grpcio==1.60.0
+grpcio-status==1.60.0
+google-api-core==2.15.0
+google-auth==2.25.2
+googleapis-common-protos==1.62.0

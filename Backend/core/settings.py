@@ -15,6 +15,10 @@ from pathlib import Path
 from decouple import config
 import dj_database_url
 from datetime import timedelta
+from dotenv import load_dotenv
+
+# Load environment variables from .env
+load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -29,7 +33,9 @@ SECRET_KEY = config('SECRET_KEY', default='django-insecure-2s!5p7(o_jj8tkk$a)wc!
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = config('DEBUG', default=True, cast=bool)
 
-ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1').split(',')
+# Fixed ALLOWED_HOSTS - handle both string and boolean cases
+ALLOWED_HOSTS_STR = config('ALLOWED_HOSTS', default='localhost,127.0.0.1')
+ALLOWED_HOSTS = ALLOWED_HOSTS_STR.split(',') if isinstance(ALLOWED_HOSTS_STR, str) else ['localhost', '127.0.0.1']
 
 
 # Application definition
@@ -89,14 +95,25 @@ WSGI_APPLICATION = 'core.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-# PostgreSQL Database Configuration
-DATABASES = {
-    'default': dj_database_url.config(
-        default=config('DATABASE_URL', default='postgresql://username:password@localhost:5432/travel_ai'),
-        conn_max_age=600,
-        conn_health_checks=True,
-    )
-}
+database_url = os.getenv("DATABASE_URL")
+
+if database_url:
+    # ✅ Parse full connection string
+    DATABASES = {
+        "default": dj_database_url.parse(database_url, conn_max_age=600, ssl_require=False)
+    }
+else:
+    # ✅ Fallback if user prefers separate variables
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": os.getenv("DB_NAME"),
+            "USER": os.getenv("DB_USER"),
+            "PASSWORD": os.getenv("DB_PASSWORD"),
+            "HOST": os.getenv("DB_HOST", "localhost"),
+            "PORT": os.getenv("DB_PORT", "5432"),
+        }
+    }
 
 
 # Password validation

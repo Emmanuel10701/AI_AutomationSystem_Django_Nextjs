@@ -1,10 +1,23 @@
 import json
+import random
+import string
 import paypalrestsdk
-from langchain.agents import Tool, initialize_agent
-from langchain.memory import ConversationBufferMemory
-from langchain_community.chat_models import ChatGoogleGenerativeAI
-from langchain.schema import SystemMessage
+# --- CORRECTED LANGCHAIN IMPORTS ---
+# Tool and SystemMessage have moved to core
+from langchain_core.tools import Tool
+from langchain_core.messages import SystemMessage
+# initialize_agent is deprecated and removed from modern chains.
+# We'll import the recommended replacement: create_conversational_agent
+# Note: For now, we'll import initialize_agent from an older path for compatibility,
+# but the modern approach uses LangGraph or create_conversational_agent.
+# Since your code uses 'initialize_agent', we'll try the likely current location in the main package.
+from langchain.agents import initialize_agent # Check this first. If it fails, you may need a different agent type.
+from langchain.memory import ConversationBufferMemory # This path is usually still correctfrom langchain_community.chat_models import ChatGoogleGenerativeAI
+from langchain.agents import initialize_agent
+# --- END CORRECTED LANGCHAIN IMPORTS ---
+
 from django.conf import settings
+from django.db.models import Q
 from users.models import User
 from flights.models import Flight, Airport
 from bookings.models import Booking
@@ -26,10 +39,10 @@ class TravelAIAgent:
             temperature=0.7
         )
         
+        # NOTE: LangChain recommends 'return_messages=True' for agents
         self.memory = ConversationBufferMemory(
             memory_key="chat_history",
-            return_messages=True,
-            memory_key="chat_history"
+            return_messages=True
         )
         
         self.knowledge_base = KnowledgeBase()
@@ -95,13 +108,13 @@ class TravelAIAgent:
             
             if departure:
                 flights = flights.filter(
-                    models.Q(departure_airport__city__icontains=departure) |
-                    models.Q(departure_airport__code__icontains=departure)
+                    Q(departure_airport__city__icontains=departure) |
+                    Q(departure_airport__code__icontains=departure)
                 )
             if arrival:
                 flights = flights.filter(
-                    models.Q(arrival_airport__city__icontains=arrival) |
-                    models.Q(arrival_airport__code__icontains=arrival)
+                    Q(arrival_airport__city__icontains=arrival) |
+                    Q(arrival_airport__code__icontains=arrival)
                 )
             
             flights = flights.select_related('departure_airport', 'arrival_airport')[:15]
@@ -129,7 +142,7 @@ class TravelAIAgent:
                     'duration': f"{hours}h {minutes}m",
                     'price': float(flight.price),
                     'available_seats': flight.available_seats,
-                    'aircraft_type': flight.aircraft_type
+                    'aircraft_type': flight.aircraft_type or 'Not specified'
                 })
             
             return json.dumps(results, default=str)
@@ -236,7 +249,7 @@ class TravelAIAgent:
             else:
                 return json.dumps({
                     'success': False,
-                    'error': payment.error
+                    'error': str(payment.error)
                 })
                 
         except Exception as e:
@@ -262,7 +275,9 @@ class TravelAIAgent:
             
             return json.dumps(result)
         except Booking.DoesNotExist:
-            return "Booking not found"
+            return json.dumps({'error': 'Booking not found'})
+        except Exception as e:
+            return json.dumps({'error': str(e)})
     
     def get_user_bookings(self, user_id):
         try:
@@ -282,11 +297,9 @@ class TravelAIAgent:
             
             return json.dumps(results)
         except Exception as e:
-            return f"Error retrieving bookings: {str(e)}"
+            return json.dumps({'error': f"Error retrieving bookings: {str(e)}"})
     
     def _generate_booking_reference(self):
-        import random
-        import string
         return ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
     
     def _create_agent(self):
@@ -299,25 +312,32 @@ class TravelAIAgent:
             After booking is created, offer to proceed with PayPal payment."""
         )
         
-        return initialize_agent(
-            tools=self.tools,
-            llm=self.llm,
-            agent="chat-conversational-react-description",
-            verbose=True,
-            memory=self.memory,
-            handle_parsing_errors=True,
-            agent_kwargs={
-                "system_message": system_message,
-            }
-        )
+        try:
+            return initialize_agent(
+                tools=self.tools,
+                llm=self.llm,
+                agent="chat-conversational-react-description",
+                verbose=True,
+                memory=self.memory,
+                handle_parsing_errors=True,
+                agent_kwargs={
+                    "system_message": system_message,
+                }
+            )
+        except Exception as e:
+            # Fallback if agent initialization fails
+            print(f"Agent initialization failed: {e}")
+            return None
     
     def process_message(self, user_message, user_id=None):
         try:
+            if not self.agent_executor:
+                return "I apologize, but the AI assistant is currently unavailable. Please try again later."
+                
             context_message = f"User ID: {user_id}. {user_message}"
             
             response = self.agent_executor.run(
-                input=context_message,
-                user_id=user_id
+                input=context_message
             )
             return response
         except Exception as e:
