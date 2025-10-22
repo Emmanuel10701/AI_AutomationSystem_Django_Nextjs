@@ -2,27 +2,25 @@ import json
 import random
 import string
 import paypalrestsdk
-# --- CORRECTED LANGCHAIN IMPORTS ---
-# Tool and SystemMessage have moved to core
-from langchain_core.tools import Tool
-from langchain_core.messages import SystemMessage
-# initialize_agent is deprecated and removed from modern chains.
-# We'll import the recommended replacement: create_conversational_agent
-# Note: For now, we'll import initialize_agent from an older path for compatibility,
-# but the modern approach uses LangGraph or create_conversational_agent.
-# Since your code uses 'initialize_agent', we'll try the likely current location in the main package.
-from langchain.agents import initialize_agent # Check this first. If it fails, you may need a different agent type.
-from langchain.memory import ConversationBufferMemory # This path is usually still correctfrom langchain_community.chat_models import ChatGoogleGenerativeAI
-from langchain.agents import initialize_agent
-# --- END CORRECTED LANGCHAIN IMPORTS ---
-
 from django.conf import settings
 from django.db.models import Q
 from users.models import User
-from flights.models import Flight, Airport
+from flights.models import Flight
 from bookings.models import Booking
 from payments.models import Payment
 from .knowledge_base import KnowledgeBase
+
+# Try modern LangChain imports first, fallback to simple approach if not available
+try:
+    from langchain.agents import AgentExecutor, create_tool_calling_agent
+    from langchain_core.tools import Tool
+    from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+    from langchain.memory import ConversationBufferMemory
+    from langchain_google_genai import ChatGoogleGenerativeAI
+    LANGCHAIN_AVAILABLE = True
+except ImportError:
+    LANGCHAIN_AVAILABLE = False
+    print("LangChain not available, using simple agent")
 
 # Configure PayPal
 paypalrestsdk.configure({
@@ -33,23 +31,27 @@ paypalrestsdk.configure({
 
 class TravelAIAgent:
     def __init__(self):
-        self.llm = ChatGoogleGenerativeAI(
-            model=settings.GEMINI_MODEL,
-            google_api_key=settings.GOOGLE_API_KEY,
-            temperature=0.7
-        )
-        
-        # NOTE: LangChain recommends 'return_messages=True' for agents
-        self.memory = ConversationBufferMemory(
-            memory_key="chat_history",
-            return_messages=True
-        )
-        
-        self.knowledge_base = KnowledgeBase()
-        self.tools = self._setup_tools()
-        self.agent_executor = self._create_agent()
+        if LANGCHAIN_AVAILABLE:
+            self.llm = ChatGoogleGenerativeAI(
+                model=settings.GEMINI_MODEL,
+                google_api_key=settings.GOOGLE_API_KEY,
+                temperature=0.7
+            )
+            
+            self.memory = ConversationBufferMemory(
+                memory_key="chat_history",
+                return_messages=True
+            )
+            
+            self.knowledge_base = KnowledgeBase()
+            self.tools = self._setup_tools()
+            self.agent_executor = self._create_modern_agent()
+        else:
+            self.knowledge_base = KnowledgeBase()
+            self.agent_executor = None
     
     def _setup_tools(self):
+        """Setup tools for the AI agent"""
         return [
             Tool(
                 name="SearchFlights",
@@ -88,6 +90,45 @@ class TravelAIAgent:
             )
         ]
     
+    def _create_modern_agent(self):
+        """Create agent using modern LangChain syntax"""
+        try:
+            # Define the prompt template
+            prompt = ChatPromptTemplate.from_messages([
+                ("system", """You are a helpful travel assistant for a flight booking platform. 
+                Help users search for flights, book tickets, check company policies, and complete payments. 
+                Use the tools available to provide accurate information.
+                Be friendly, informative, and guide users through the booking process step by step.
+                When users want to book a flight, ask for passenger details and then initiate the booking.
+                After booking is created, offer to proceed with PayPal payment."""),
+                MessagesPlaceholder(variable_name="chat_history"),
+                ("human", "{input}"),
+                MessagesPlaceholder(variable_name="agent_scratchpad"),
+            ])
+            
+            # Create the agent
+            agent = create_tool_calling_agent(
+                llm=self.llm,
+                prompt=prompt,
+                tools=self.tools,
+            )
+            
+            # Create executor
+            agent_executor = AgentExecutor(
+                agent=agent,
+                tools=self.tools,
+                memory=self.memory,
+                verbose=True,
+                handle_parsing_errors=True,
+            )
+            
+            return agent_executor
+            
+        except Exception as e:
+            print(f"Failed to create modern agent: {e}")
+            return None
+
+    # All your existing tool methods remain the same...
     def search_flights(self, query):
         try:
             # Enhanced query parsing
@@ -151,7 +192,6 @@ class TravelAIAgent:
     
     def check_company_policies(self, query):
         try:
-            # Use knowledge base to answer policy questions
             response = self.knowledge_base.query_knowledge_base(query)
             return response
         except Exception as e:
@@ -302,43 +342,58 @@ class TravelAIAgent:
     def _generate_booking_reference(self):
         return ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
     
-    def _create_agent(self):
-        system_message = SystemMessage(
-            content="""You are a helpful travel assistant for a flight booking platform. 
-            Help users search for flights, book tickets, check company policies, and complete payments. 
-            Use the knowledge base to provide accurate information about company policies, baggage rules, and flight details.
-            Be friendly, informative, and guide users through the booking process step by step.
-            When users want to book a flight, ask for passenger details and then initiate the booking.
-            After booking is created, offer to proceed with PayPal payment."""
-        )
+    def process_message(self, user_message, user_id=None):
+        """Process user message with fallback to simple logic if LangChain not available"""
+        if not LANGCHAIN_AVAILABLE or not self.agent_executor:
+            return self._simple_process_message(user_message, user_id)
         
         try:
-            return initialize_agent(
-                tools=self.tools,
-                llm=self.llm,
-                agent="chat-conversational-react-description",
-                verbose=True,
-                memory=self.memory,
-                handle_parsing_errors=True,
-                agent_kwargs={
-                    "system_message": system_message,
-                }
-            )
-        except Exception as e:
-            # Fallback if agent initialization fails
-            print(f"Agent initialization failed: {e}")
-            return None
-    
-    def process_message(self, user_message, user_id=None):
-        try:
-            if not self.agent_executor:
-                return "I apologize, but the AI assistant is currently unavailable. Please try again later."
-                
             context_message = f"User ID: {user_id}. {user_message}"
             
-            response = self.agent_executor.run(
-                input=context_message
-            )
-            return response
+            response = self.agent_executor.invoke({
+                "input": context_message,
+                "chat_history": self.memory.chat_memory.messages
+            })
+            
+            return response.get("output", "I apologize, but I couldn't process your request.")
+            
         except Exception as e:
-            return f"I apologize, but I encountered an error: {str(e)}. Please try again or contact support."
+            print(f"Agent error, falling back to simple processing: {e}")
+            return self._simple_process_message(user_message, user_id)
+    
+    def _simple_process_message(self, user_message, user_id=None):
+        """Simple rule-based message processing without LangChain"""
+        message_lower = user_message.lower()
+        
+        # Flight search
+        if any(keyword in message_lower for keyword in ['flight', 'fly', 'travel', 'search']):
+            return self.search_flights_simple(user_message)
+        
+        # Policy questions
+        elif any(keyword in message_lower for keyword in ['policy', 'baggage', 'cancellation', 'check-in']):
+            return self.knowledge_base.query_knowledge_base(user_message)
+        
+        # Booking
+        elif any(keyword in message_lower for keyword in ['book', 'reserve', 'buy ticket']):
+            return "I can help you book a flight! Please tell me your departure and arrival cities, and how many passengers."
+        
+        # Booking status
+        elif any(keyword in message_lower for keyword in ['status', 'my booking', 'my bookings']):
+            if user_id:
+                return self.get_user_bookings(user_id)
+            else:
+                return "Please provide your booking reference to check your booking status."
+        
+        # General help
+        else:
+            return "I'm here to help with your travel needs! You can ask me about flights, booking, policies, or check your bookings."
+
+    def search_flights_simple(self, query):
+        """Simple flight search for fallback mode"""
+        try:
+            results = self.search_flights(query)
+            if "Error" in results:
+                return "I couldn't search for flights right now. Please try again later."
+            return f"Here are some flights I found:\n{results}"
+        except Exception as e:
+            return "Sorry, I encountered an error searching for flights."
