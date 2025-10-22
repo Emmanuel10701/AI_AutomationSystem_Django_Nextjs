@@ -3,7 +3,7 @@ from rest_framework.response import Response
 from django.contrib.auth import login
 from knox.views import LoginView as KnoxLoginView
 from .models import User
-from .serializers import UserSerializer, LoginSerializer
+from .serializer import UserSerializer, LoginSerializer
 
 class RegisterAPI(generics.GenericAPIView):
     serializer_class = UserSerializer
