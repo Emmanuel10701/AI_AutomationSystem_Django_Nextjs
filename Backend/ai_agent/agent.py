@@ -41,6 +41,7 @@ class TravelAIAgent:
         """Initialize AI agent with Gemini Flash 2.5"""
         self.knowledge_base = KnowledgeBase()
         self.agent_executor = None
+        self.casual_chat_llm = None  # Separate LLM for casual chat
         
         print(f"🔧 Initializing AI Agent with Gemini Flash 2.5...")
         print(f"   GOOGLE_API_KEY: {'✅ Set' if settings.GOOGLE_API_KEY else '❌ Missing'}")
@@ -48,12 +49,20 @@ class TravelAIAgent:
 
         if LANGCHAIN_AVAILABLE and settings.GOOGLE_API_KEY:
             try:
-                # Initialize Gemini Flash 2.5 explicitly
+                # Initialize Gemini Flash 2.5 explicitly for main agent
                 self.llm = ChatGoogleGenerativeAI(
                     model=settings.GEMINI_MODEL,  # This should be 'gemini-2.0-flash-exp'
                     google_api_key=settings.GOOGLE_API_KEY,
                     temperature=0.7,
                 )
+                
+                # Initialize separate LLM for casual chat with higher temperature
+                self.casual_chat_llm = ChatGoogleGenerativeAI(
+                    model=settings.GEMINI_MODEL,
+                    google_api_key=settings.GOOGLE_API_KEY,
+                    temperature=0.9,  # Higher temperature for more creative responses
+                )
+                
                 print(f"✅ Gemini Model: {settings.GEMINI_MODEL}")
 
                 self.memory = ConversationBufferMemory(
@@ -152,6 +161,46 @@ class TravelAIAgent:
         except Exception as e:
             print(f"❌ Failed to create modern agent: {e}")
             return None
+
+    # ---------- Casual Chat Function ----------
+    def casual_chat(self, message, chat_history=None):
+        """
+        Have a casual conversation with the AI without using travel-specific tools.
+        Perfect for general chatting, questions, or casual conversation.
+        """
+        if not self.casual_chat_llm:
+            return "I'd love to chat, but the AI chat system isn't available right now. Please check the configuration."
+        
+        try:
+            # Create a casual chat prompt
+            casual_prompt = ChatPromptTemplate.from_messages([
+                ("system", """You are a friendly, helpful, and engaging AI assistant. 
+                You can have casual conversations, answer general questions, tell jokes, 
+                discuss various topics, and be generally conversational.
+                
+                Keep your responses friendly, natural, and engaging. You can be witty, 
+                humorous, and show personality while remaining helpful and appropriate.
+                
+                If someone asks travel-related questions, you can answer generally but 
+                suggest they use the travel-specific features for detailed assistance.
+                """),
+                MessagesPlaceholder(variable_name="chat_history"),
+                ("human", "{input}"),
+            ])
+            
+            # Prepare the messages
+            messages = casual_prompt.format_messages(
+                input=message,
+                chat_history=chat_history or []
+            )
+            
+            # Get response from the casual chat LLM
+            response = self.casual_chat_llm.invoke(messages)
+            return response.content
+            
+        except Exception as e:
+            print(f"❌ Error in casual chat: {e}")
+            return "Sorry, I'm having trouble chatting right now. Let's try again!"
 
     # ---------- Tool Functions (Keep all your existing tool functions exactly as they were) ----------
     def search_flights(self, query):
